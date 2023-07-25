@@ -3,31 +3,34 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/raphaelmb/go-lenslocked/controllers"
+	"github.com/raphaelmb/go-lenslocked/views"
 )
-
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>Home</h1>")
-}
-
-func contactHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>Contact</h1>")
-}
-
-func faqHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<h1>FAQ</h1>")
-}
 
 func main() {
 	r := chi.NewRouter()
 
-	r.Get("/", homeHandler)
-	r.Get("/contact", contactHandler)
-	r.Get("/faq", faqHandler)
+	tmpl, err := views.Parse(filepath.Join("templates", "home.tmpl.html"))
+	if err != nil {
+		panic(err)
+	}
+	r.Get("/", controllers.StaticHandler(tmpl))
+
+	tmpl, err = views.Parse(filepath.Join("templates", "contact.tmpl.html"))
+	if err != nil {
+		panic(err)
+	}
+	r.Get("/contact", controllers.StaticHandler(tmpl))
+
+	tmpl, err = views.Parse(filepath.Join("templates", "faq.tmpl.html"))
+	if err != nil {
+		panic(err)
+	}
+	r.Get("/faq", controllers.StaticHandler(tmpl))
+
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Page Not Found", http.StatusNotFound)
 	})
