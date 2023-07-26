@@ -3,33 +3,24 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/raphaelmb/go-lenslocked/controllers"
+	"github.com/raphaelmb/go-lenslocked/templates"
 	"github.com/raphaelmb/go-lenslocked/views"
 )
 
 func main() {
 	r := chi.NewRouter()
 
-	tmpl, err := views.Parse(filepath.Join("templates", "home.tmpl.html"))
-	if err != nil {
-		panic(err)
-	}
+	tmpl := views.Must(views.ParseFS(templates.FS, "layout-page.tmpl.html", "home.tmpl.html"))
 	r.Get("/", controllers.StaticHandler(tmpl))
 
-	tmpl, err = views.Parse(filepath.Join("templates", "contact.tmpl.html"))
-	if err != nil {
-		panic(err)
-	}
+	tmpl = views.Must(views.ParseFS(templates.FS, "contact.tmpl.html"))
 	r.Get("/contact", controllers.StaticHandler(tmpl))
 
-	tmpl, err = views.Parse(filepath.Join("templates", "faq.tmpl.html"))
-	if err != nil {
-		panic(err)
-	}
-	r.Get("/faq", controllers.StaticHandler(tmpl))
+	tmpl = views.Must(views.ParseFS(templates.FS, "faq.tmpl.html"))
+	r.Get("/faq", controllers.FAQ(tmpl))
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Page Not Found", http.StatusNotFound)
