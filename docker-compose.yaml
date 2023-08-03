@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: lenslocked-db
+    restart: always
+    volumes:
+      - ./.docker/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: lenslocked
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 5432:5432
