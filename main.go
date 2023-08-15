@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/csrf"
 	"github.com/raphaelmb/go-lenslocked/controllers"
 	"github.com/raphaelmb/go-lenslocked/models"
 	"github.com/raphaelmb/go-lenslocked/templates"
@@ -50,5 +51,8 @@ func main() {
 	})
 
 	fmt.Println("Listening on port 8080")
-	http.ListenAndServe(":8080", r)
+
+	csrfKey := "secret"
+	csrfMiddleware := csrf.Protect([]byte(csrfKey), csrf.Secure(false))
+	http.ListenAndServe(":8080", csrfMiddleware(r))
 }
