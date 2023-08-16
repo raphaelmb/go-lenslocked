@@ -13,7 +13,8 @@ type Users struct {
 		New    Template
 		SignIn Template
 	}
-	UserService *models.UserService
+	UserService    *models.UserService
+	SessionService *models.SessionService
 }
 
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
@@ -45,19 +46,31 @@ func (u *Users) ProcessSignIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
-	cookie := http.Cookie{Name: "email", Value: user.Email, Path: "/", HttpOnly: true}
-	http.SetCookie(w, &cookie)
-	fmt.Fprintf(w, "User authenticated: %+v", user)
-}
-
-func (u *Users) CurrentUser(w http.ResponseWriter, r *http.Request) {
-	email, err := r.Cookie("email")
+	session, err := u.SessionService.Create(user.ID)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(w, "Email cookie: %s\n", email.Value)
+	cookie := http.Cookie{Name: "session", Value: session.Token, Path: "/", HttpOnly: true}
+	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, "/users/me", http.StatusFound)
+}
+
+func (u *Users) CurrentUser(w http.ResponseWriter, r *http.Request) {
+	tokenCookie, err := r.Cookie("session")
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/signin", http.StatusFound)
+		return
+	}
+	user, err := u.SessionService.User(tokenCookie.Value)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/signin", http.StatusFound)
+		return
+	}
+	fmt.Fprintf(w, "Current user: %s\n", user.Email)
 }
 
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +82,13 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Fprintf(w, "User created: %+v", user)
+	session, err := u.SessionService.Create(user.ID)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/signin", http.StatusFound)
+		return
+	}
+	cookie := http.Cookie{Name: "session ", Value: session.Token, Path: "/", HttpOnly: true}
+	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, "/users/me", http.StatusFound)
 }
