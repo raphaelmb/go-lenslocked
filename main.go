@@ -23,6 +23,9 @@ func main() {
 	userService := models.UserService{
 		DB: db,
 	}
+	sessionService := models.SessionService{
+		DB: db,
+	}
 
 	r := chi.NewRouter()
 
@@ -36,7 +39,8 @@ func main() {
 	r.Get("/faq", controllers.FAQ(tmpl))
 
 	usersC := controllers.Users{
-		UserService: &userService,
+		UserService:    &userService,
+		SessionService: &sessionService,
 	}
 	usersC.Templates.New = views.Must(views.ParseFS(templates.FS, "signup.tmpl.html", "tailwind.tmpl.html"))
 	usersC.Templates.SignIn = views.Must(views.ParseFS(templates.FS, "signin.tmpl.html", "tailwind.tmpl.html"))
