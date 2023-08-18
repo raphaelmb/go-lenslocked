@@ -41,8 +41,12 @@ func (ss *SessionService) Create(userID int) (*Session, error) {
 		Token:     token,
 		TokenHash: ss.hash(token),
 	}
-	row := ss.DB.QueryRow(`INSERT INTO sessions (user_id, token_hash) VALUES ($1, $2) RETURNING id`, session.UserID, session.TokenHash)
+	row := ss.DB.QueryRow(`UPDATE sessions SET token_hash = $1 WHERE user_id = $2 RETURNING id`, session.TokenHash, session.UserID)
 	err = row.Scan(&session.ID)
+	if err == sql.ErrNoRows {
+		row = ss.DB.QueryRow(`INSERT INTO sessions (user_id, token_hash) VALUES ($1, $2) RETURNING id`, session.UserID, session.TokenHash)
+		err = row.Scan(&session.ID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error creating session: %v", err)
 	}
@@ -50,7 +54,23 @@ func (ss *SessionService) Create(userID int) (*Session, error) {
 }
 
 func (ss *SessionService) User(token string) (*User, error) {
-	return nil, nil
+	tokenHash := ss.hash(token)
+	var user User
+	row := ss.DB.QueryRow(`SELECT s.user_id, u.email, u.password_hash FROM sessions s INNER JOIN users u ON s.user_id = u.id WHERE token_hash = $1`, tokenHash)
+	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up user: %v", err)
+	}
+	return &user, nil
+}
+
+func (ss *SessionService) Delete(token string) error {
+	tokenHash := ss.hash(token)
+	_, err := ss.DB.Exec(`DELETE FROM sessions WHERE token_hash = $1`, tokenHash)
+	if err != nil {
+		return fmt.Errorf("error deleting session: %v", err)
+	}
+	return nil
 }
 
 func (ss *SessionService) hash(token string) string {
