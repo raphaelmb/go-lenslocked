@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/csrf"
 	"github.com/raphaelmb/go-lenslocked/controllers"
+	"github.com/raphaelmb/go-lenslocked/migrations"
 	"github.com/raphaelmb/go-lenslocked/models"
 	"github.com/raphaelmb/go-lenslocked/templates"
 	"github.com/raphaelmb/go-lenslocked/views"
@@ -19,6 +20,11 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+
+	err = models.MigrateFS(db, migrations.FS, ".")
+	if err != nil {
+		panic(err)
+	}
 
 	userService := models.UserService{
 		DB: db,
