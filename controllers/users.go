@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/raphaelmb/go-lenslocked/context"
 	"github.com/raphaelmb/go-lenslocked/models"
 )
 
@@ -57,19 +58,12 @@ func (u *Users) ProcessSignIn(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u *Users) CurrentUser(w http.ResponseWriter, r *http.Request) {
-	token, err := readCookie(r, CookieSession)
-	if err != nil {
-		log.Println(err)
+	user := context.User(r.Context())
+	if user == nil {
 		http.Redirect(w, r, "/signin", http.StatusFound)
 		return
 	}
-	user, err := u.SessionService.User(token)
-	if err != nil {
-		log.Println(err)
-		http.Redirect(w, r, "/signin", http.StatusFound)
-		return
-	}
-	fmt.Fprintf(w, "Current user: %+v\n", user)
+	fmt.Fprintf(w, "Current user: %s\n", user.Email)
 }
 
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
@@ -105,4 +99,27 @@ func (u *Users) ProcessSignOut(w http.ResponseWriter, r *http.Request) {
 	}
 	deleteCookie(w, CookieSession)
 	http.Redirect(w, r, "/signin", http.StatusFound)
+}
+
+type UserMiddleware struct {
+	SessionService *models.SessionService
+}
+
+func (umw *UserMiddleware) SetUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, err := readCookie(r, CookieSession)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		user, err := umw.SessionService.User(token)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		ctx := r.Context()
+		ctx = context.WithUser(ctx, user)
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
 }
