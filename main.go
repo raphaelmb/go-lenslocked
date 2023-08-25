@@ -14,6 +14,20 @@ import (
 )
 
 func main() {
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// host := os.Getenv("SMTP_HOST")
+	// portStr := os.Getenv("SMTP_PORT")
+	// port, err := strconv.Atoi(portStr)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// username := os.Getenv("SMTP_USERNAME")
+	// password := os.Getenv("SMTP_PASSWORD")
+
 	cfg := models.DefaultPostgresConfig()
 	db, err := models.Open(cfg)
 	if err != nil {
