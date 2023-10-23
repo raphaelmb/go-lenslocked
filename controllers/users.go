@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/raphaelmb/go-lenslocked/context"
 	"github.com/raphaelmb/go-lenslocked/models"
@@ -11,11 +12,15 @@ import (
 
 type Users struct {
 	Templates struct {
-		New    Template
-		SignIn Template
+		New            Template
+		SignIn         Template
+		ForgotPassword Template
+		CheckYourEmail Template
 	}
-	UserService    *models.UserService
-	SessionService *models.SessionService
+	UserService     *models.UserService
+	SessionService  *models.SessionService
+	PasswordService *models.PasswordResetService
+	EmailService    *models.EmailService
 }
 
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +100,39 @@ func (u *Users) ProcessSignOut(w http.ResponseWriter, r *http.Request) {
 	}
 	deleteCookie(w, CookieSession)
 	http.Redirect(w, r, "/signin", http.StatusFound)
+}
+
+func (u *Users) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Email string
+	}
+	data.Email = r.FormValue("email")
+	u.Templates.ForgotPassword.Execute(w, r, data)
+}
+
+func (u *Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Email string
+	}
+	data.Email = r.FormValue("email")
+	pwReset, err := u.PasswordService.Create(data.Email)
+	if err != nil {
+		// TODO: handle other cases like there's no user linked to email
+		fmt.Println(err)
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+	vals := url.Values{
+		"token": {pwReset.Token},
+	}
+	resetUrl := fmt.Sprintf("%s%s", "http://www.lenslocked.com/reset-pw?", vals.Encode())
+	err = u.EmailService.ForgotPassword(data.Email, resetUrl)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "something went wrong", http.StatusInternalServerError)
+		return
+	}
+	u.Templates.CheckYourEmail.Execute(w, r, data)
 }
 
 type UserMiddleware struct {
