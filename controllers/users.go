@@ -17,10 +17,10 @@ type Users struct {
 		ForgotPassword Template
 		CheckYourEmail Template
 	}
-	UserService     *models.UserService
-	SessionService  *models.SessionService
-	PasswordService *models.PasswordResetService
-	EmailService    *models.EmailService
+	UserService          *models.UserService
+	SessionService       *models.SessionService
+	PasswordResetService *models.PasswordResetService
+	EmailService         *models.EmailService
 }
 
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +115,7 @@ func (u *Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
 		Email string
 	}
 	data.Email = r.FormValue("email")
-	pwReset, err := u.PasswordService.Create(data.Email)
+	pwReset, err := u.PasswordResetService.Create(data.Email)
 	if err != nil {
 		// TODO: handle other cases like there's no user linked to email
 		fmt.Println(err)
