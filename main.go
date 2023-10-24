@@ -94,6 +94,8 @@ func main() {
 	usersC.Templates.New = views.Must(views.ParseFS(templates.FS, "signup.tmpl.html", "tailwind.tmpl.html"))
 	usersC.Templates.SignIn = views.Must(views.ParseFS(templates.FS, "signin.tmpl.html", "tailwind.tmpl.html"))
 	usersC.Templates.ForgotPassword = views.Must(views.ParseFS(templates.FS, "forgot-pw.tmpl.html", "tailwind.tmpl.html"))
+	usersC.Templates.CheckYourEmail = views.Must(views.ParseFS(templates.FS, "check-your-email.tmpl.html", "tailwind.tmpl.html"))
+	usersC.Templates.ResetPassword = views.Must(views.ParseFS(templates.FS, "reset-pw.tmpl.html", "tailwind.tmpl.html"))
 
 	r := chi.NewRouter()
 
@@ -116,6 +118,8 @@ func main() {
 	r.Post("/signout", usersC.ProcessSignOut)
 	r.Get("/forgot-pw", usersC.ForgotPassword)
 	r.Post("/forgot-pw", usersC.ProcessForgotPassword)
+	r.Get("/reset-pw", usersC.ResetPassword)
+	r.Post("/reset-pw", usersC.ProcessResetPassword)
 	r.Route("/users/me", func(r chi.Router) {
 		r.Use(umw.RequireUser)
 		r.Get("/", usersC.CurrentUser)
@@ -125,7 +129,7 @@ func main() {
 		http.Error(w, "Page Not Found", http.StatusNotFound)
 	})
 
-	fmt.Printf("Starting server on %s...", cfg.Server.Address)
+	fmt.Printf("Starting server on %s...\n", cfg.Server.Address)
 	err = http.ListenAndServe(cfg.Server.Address, r)
 	if err != nil {
 		panic(err)
