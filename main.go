@@ -78,12 +78,15 @@ func main() {
 		DB: db,
 	}
 	emailService := models.NewEmailService(cfg.SMTP)
+	galleryService := &models.GalleryService{
+		DB: db,
+	}
 
 	umw := controllers.UserMiddleware{
 		SessionService: sessionService,
 	}
 
-	csrfMiddleware := csrf.Protect([]byte(cfg.CSRF.Key), csrf.Secure(cfg.CSRF.Secure))
+	csrfMiddleware := csrf.Protect([]byte(cfg.CSRF.Key), csrf.Secure(cfg.CSRF.Secure), csrf.Path("/"))
 
 	usersC := controllers.Users{
 		UserService:          userService,
@@ -96,6 +99,12 @@ func main() {
 	usersC.Templates.ForgotPassword = views.Must(views.ParseFS(templates.FS, "forgot-pw.tmpl.html", "tailwind.tmpl.html"))
 	usersC.Templates.CheckYourEmail = views.Must(views.ParseFS(templates.FS, "check-your-email.tmpl.html", "tailwind.tmpl.html"))
 	usersC.Templates.ResetPassword = views.Must(views.ParseFS(templates.FS, "reset-pw.tmpl.html", "tailwind.tmpl.html"))
+
+	galleriesC := controllers.Galleries{
+		GalleryService: galleryService,
+	}
+	galleriesC.Templates.New = views.Must(views.ParseFS(templates.FS, "galleries/new.tmpl.html", "tailwind.tmpl.html"))
+	galleriesC.Templates.Edit = views.Must(views.ParseFS(templates.FS, "galleries/edit.tmpl.html", "tailwind.tmpl.html"))
 
 	r := chi.NewRouter()
 
@@ -121,8 +130,18 @@ func main() {
 	r.Get("/reset-pw", usersC.ResetPassword)
 	r.Post("/reset-pw", usersC.ProcessResetPassword)
 	r.Route("/users/me", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(umw.RequireUser)
+			r.Get("/", usersC.CurrentUser)
+		})
+	})
+
+	r.Route("/galleries", func(r chi.Router) {
 		r.Use(umw.RequireUser)
-		r.Get("/", usersC.CurrentUser)
+		r.Get("/new", galleriesC.New)
+		r.Get("/{id}/edit", galleriesC.Edit)
+		r.Post("/", galleriesC.Create)
+		r.Post("/{id}", galleriesC.Update)
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
