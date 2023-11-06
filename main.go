@@ -105,6 +105,8 @@ func main() {
 	}
 	galleriesC.Templates.New = views.Must(views.ParseFS(templates.FS, "galleries/new.tmpl.html", "tailwind.tmpl.html"))
 	galleriesC.Templates.Edit = views.Must(views.ParseFS(templates.FS, "galleries/edit.tmpl.html", "tailwind.tmpl.html"))
+	galleriesC.Templates.Index = views.Must(views.ParseFS(templates.FS, "galleries/index.tmpl.html", "tailwind.tmpl.html"))
+	galleriesC.Templates.Show = views.Must(views.ParseFS(templates.FS, "galleries/show.tmpl.html", "tailwind.tmpl.html"))
 
 	r := chi.NewRouter()
 
@@ -137,11 +139,15 @@ func main() {
 	})
 
 	r.Route("/galleries", func(r chi.Router) {
-		r.Use(umw.RequireUser)
-		r.Get("/new", galleriesC.New)
-		r.Get("/{id}/edit", galleriesC.Edit)
-		r.Post("/", galleriesC.Create)
-		r.Post("/{id}", galleriesC.Update)
+		r.Get("/{id}", galleriesC.Show)
+		r.Group(func(r chi.Router) {
+			r.Use(umw.RequireUser)
+			r.Get("/new", galleriesC.New)
+			r.Get("/", galleriesC.Index)
+			r.Get("/{id}/edit", galleriesC.Edit)
+			r.Post("/", galleriesC.Create)
+			r.Post("/{id}", galleriesC.Update)
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
