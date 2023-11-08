@@ -45,7 +45,7 @@ func (service *GalleryService) ByID(id int) (*Gallery, error) {
 }
 
 func (service *GalleryService) ByUserID(id int) ([]Gallery, error) {
-	rows, err := service.DB.Query(`SELECT id, title FROM galleries WHERE id = $1;`, id)
+	rows, err := service.DB.Query(`SELECT id, title FROM galleries WHERE user_id = $1;`, id)
 	if err != nil {
 		return nil, fmt.Errorf("query galleries by user: %w", err)
 	}

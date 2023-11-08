@@ -12,6 +12,8 @@ import (
 	"github.com/raphaelmb/go-lenslocked/models"
 )
 
+type galleryOpt func(http.ResponseWriter, *http.Request, *models.Gallery) error
+
 type Galleries struct {
 	Templates struct {
 		New   Template
@@ -38,23 +40,17 @@ func (g Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	data.UserID = context.User(r.Context()).ID
 	data.Title = r.FormValue("title")
 
-	gallery, err := g.GalleryService.Create(data.Title, data.UserID)
+	_, err := g.GalleryService.Create(data.Title, data.UserID)
 	if err != nil {
 		g.Templates.New.Execute(w, r, data, err)
 		return
 	}
-	editPath := fmt.Sprintf("/galleries/%d/edit", gallery.ID)
-	http.Redirect(w, r, editPath, http.StatusFound)
+	http.Redirect(w, r, "/galleries", http.StatusFound)
 }
 
 func (g Galleries) Edit(w http.ResponseWriter, r *http.Request) {
-	gallery, err := g.galleryByID(w, r)
+	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
 	if err != nil {
-		return
-	}
-	user := context.User(r.Context())
-	if gallery.UserID != user.ID {
-		http.Error(w, "Unauthorized", http.StatusForbidden)
 		return
 	}
 
@@ -68,13 +64,8 @@ func (g Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g Galleries) Update(w http.ResponseWriter, r *http.Request) {
-	gallery, err := g.galleryByID(w, r)
+	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
 	if err != nil {
-		return
-	}
-	user := context.User(r.Context())
-	if gallery.UserID != user.ID {
-		http.Error(w, "Unauthorized", http.StatusForbidden)
 		return
 	}
 
@@ -132,7 +123,7 @@ func (g Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	g.Templates.Show.Execute(w, r, data)
 }
 
-func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request) (*models.Gallery, error) {
+func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request, opts ...galleryOpt) (*models.Gallery, error) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "Invalid ID", http.StatusNotFound)
@@ -147,5 +138,36 @@ func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request) (*models.
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return nil, err
 	}
+	for _, opt := range opts {
+		err = opt(w, r, gallery)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return gallery, nil
+}
+
+func (g Galleries) Delete(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
+	if err != nil {
+		return
+	}
+
+	err = g.GalleryService.Delete(gallery.ID)
+	if err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/galleries", http.StatusFound)
+}
+
+func userMustOwnGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Unauthorized", http.StatusForbidden)
+		return fmt.Errorf("user does not have access to this gallery")
+	}
+	return nil
 }
